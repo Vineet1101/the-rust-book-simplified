@@ -10,8 +10,61 @@ By this point, you know how to write multithreaded code from Chapter 16. However
 
 Before diving into `async`, it is crucial to understand the difference between concurrency and parallelism:
 
-- **Concurrency**: Dealing with multiple tasks at once. You switch between tasks (e.g., while waiting for a video to download, you start reading an email). This can happen on a single CPU core.
-- **Parallelism**: Doing multiple tasks at exactly the same time. This requires multiple CPU cores.
+- **Concurrency**: Dealing with multiple tasks at once. The CPU switches between tasks (interleaving execution) so they all make progress. For example, while waiting for a database query to return, the CPU starts handling another web request. This can happen on a single CPU core.
+- **Parallelism**: Doing multiple tasks at the exact same time. This requires multiple CPU cores, where each core executes a different task simultaneously.
+
+Here is a visual breakdown of how tasks are scheduled under both models:
+
+### Visualizing Concurrency vs. Parallelism
+
+#### Concurrency (Single CPU Core — Interleaved)
+In a concurrent (but non-parallel) system, a single CPU core switches context between **Task A** and **Task B**. Although they seem to run at the same time to the user, only one instruction is executed at any given millisecond.
+
+```mermaid
+flowchart LR
+    classDef taskA fill:#FADBD8,stroke:#E74C3C,stroke-width:2px,color:#2C3E50
+    classDef taskB fill:#D4E6F1,stroke:#3498DB,stroke-width:2px,color:#2C3E50
+
+    subgraph Single_Core ["Single CPU Core (Interleaved Execution Timeline)"]
+        direction LR
+        A1["Task A (Part 1)"] --> B1["Task B (Part 1)"]
+        B1 --> A2["Task A (Part 2)"]
+        A2 --> B2["Task B (Part 2)"]
+        B2 --> A3["Task A (Part 3)"]
+        A3 --> A4["Task A (Part 4)"]
+        A4 --> B3["Task B (Part 3)"]
+    end
+
+    class A1,A2,A3,A4 taskA
+    class B1,B2,B3 taskB
+```
+
+#### Parallelism (Multi-Core CPU — Simultaneous)
+In a parallel system, multiple CPU cores are available. **Task A** runs continuously on **Core 1**, while **Task B** runs continuously on **Core 2** at the exact same time.
+
+```mermaid
+flowchart TD
+    classDef taskA fill:#FADBD8,stroke:#E74C3C,stroke-width:2px,color:#2C3E50
+    classDef taskB fill:#D4E6F1,stroke:#3498DB,stroke-width:2px,color:#2C3E50
+
+    subgraph Parallel ["Parallel Execution (Multi-Core)"]
+        direction TB
+        subgraph Core_1 ["CPU Core 1"]
+            direction LR
+            PA1["Task A (Part 1)"] --> PA2["Task A (Part 2)"] --> PA3["Task A (Part 3)"] --> PA4["Task A (Part 4)"]
+        end
+        subgraph Core_2 ["CPU Core 2"]
+            direction LR
+            PB1["Task B (Part 1)"] --> PB2["Task B (Part 2)"] --> PB3["Task B (Part 3)"]
+        end
+    end
+
+    class PA1,PA2,PA3,PA4 taskA
+    class PB1,PB2,PB3 taskB
+```
+
+> [!NOTE]
+> **Async Rust's** focus is primarily on **Concurrency**. It allows a single thread to manage thousands of open tasks (like network connections) by pausing them when they are waiting for I/O and letting other tasks run on the same thread. However, modern runtimes (like Tokio) can also run tasks in **Parallel** by scheduling them across multiple OS threads (and thus multiple CPU cores).
 
 Rust’s `async` feature gives us a powerful way to write highly concurrent code.
 
